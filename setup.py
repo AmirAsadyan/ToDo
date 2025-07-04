@@ -14,6 +14,10 @@ setup(
     author="AmirAsadyan",
     description="A simple To-Do list application with Tkinter.",
     packages=find_packages(),
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: GUN General Public License v2.0",
+    ],
     install_requires=requirements,
     entry_points={
         "console_scripts": [
