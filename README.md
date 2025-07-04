@@ -1,6 +1,6 @@
 # 📝 ToDo App
 
-A simple command-line based ToDo application built with Python.
+A simple ToDo application built with Python.
 
 ## 📦 Features
 
