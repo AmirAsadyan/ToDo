@@ -1,2 +1,1 @@
-# No external dependencies yet.
-# Add future libraries here, one per line.
+tksvg
