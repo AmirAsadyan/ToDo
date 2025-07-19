@@ -35,8 +35,8 @@ ToDo/
 ├── MANIFEST.in
 ├── README.md
 ├── requirements.txt
-└── setup.py
-└── install.bat
+├── setup.py
+├── install.bat
 └── uninstall.bat
 ```
 
