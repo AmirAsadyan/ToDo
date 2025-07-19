@@ -36,6 +36,8 @@ ToDo/
 ├── README.md
 ├── requirements.txt
 └── setup.py
+└── install.bat
+└── uninstall.bat
 ```
 
 ## 🚀 Installation & Usage
