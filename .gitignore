@@ -2,3 +2,6 @@ build/
 todo_app.egg-info/
 __pycache__
 icons
+setup.py
+dist/
+run.py

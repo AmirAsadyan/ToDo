@@ -1,45 +1,90 @@
 # setup.py
 
-import os
-from setuptools import setup, find_packages # type: ignore
+import sys
+from cx_Freeze import setup, Executable
 
+# --- اطلاعات پایه برنامه ---
+APP_NAME = "ToDo App"
+VERSION = "2.0"
+AUTHOR = "AmirAsadyan"
+AUTHOR_EMAIL = "asadyanamir@gmail.com"
+DESCRIPTION = "A simple and modern To-Do list application with Tkinter."
+
+# خواندن توضیحات بلند از فایل README
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-try:
-    with open("requirements.txt", "r", encoding="utf-8") as f:
-        requirements = f.read().splitlines()
-except FileNotFoundError:
-    requirements = []
+# --- تنظیمات اصلی cx_Freeze ---
+
+# فایل اجرایی اصلی برنامه (تغییر یافته به run.py)
+executables = [
+    Executable(
+        "run.py",  # <--- نقطه شروع برنامه
+        base="Win32GUI",
+        target_name="todo.exe",
+        icon="todo_app/icons/app_icon.ico",
+    )
+]
+
+# فایل‌ها و پکیج‌هایی که باید در نصب‌کننده گنجانده شوند
+included_files = ["todo_app/icons/"]
+included_packages = [
+    "tkinter",
+    "tksvg",
+    "todo_app",
+]  # <-- پکیج اپلیکیشن خودت رو هم اضافه کن
+
+# تنظیمات مربوط به ساخت فایل اجرایی
+build_exe_options = {
+    "packages": included_packages,
+    "include_files": included_files,
+    "include_msvcr": True,
+}
+
+# --- تنظیمات ساخت نصب‌کننده MSI ---
+
+# تعریف میانبر دسکتاپ
+shortcut_table = [
+    (
+        "DesktopShortcut",
+        "DesktopFolder",
+        APP_NAME,
+        "TARGETDIR",
+        "[TARGETDIR]todo.exe",
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        "TARGETDIR",
+    )
+]
+
+# تنظیمات نهایی MSI
+bdist_msi_options = {
+    "all_users": True,
+    "data": {"Shortcut": shortcut_table},
+    # این کد رو حتماً با کد GUID خودت جایگزین کن!
+    "upgrade_code": "{9d254152-fe4a-4ed7-86cf-88ddf497b0d4}",  # <-- مثال
+    "add_to_path": False,
+    "initial_target_dir": r"[ProgramFilesFolder]\%s\%s" % (AUTHOR, APP_NAME),
+}
+
+# --- تابع اصلی setup ---
 
 setup(
-    name="todo_app",
-    version="0.1.0",
-    author="AmirAsadyan",
-    author_email="asadyanamir@gmail.com",
-    description="A simple To-Do list application with Tkinter.",
+    name=APP_NAME,
+    version=VERSION,
+    author=AUTHOR,
+    author_email=AUTHOR_EMAIL,
+    description=DESCRIPTION,
     long_description=long_description,
     long_description_content_type="text/markdown",
-    # آدرس ریپازیتوری گیت‌هاب پروژه
     url="https://github.com/AmirAsadyan/ToDo",
-    packages=find_packages(),
-    include_package_data=True,
-    classifiers=[
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.13"       
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-        "Topic :: Desktop Environment",
-        "Topic :: Utilities",
-    ],
-    install_requires=requirements,
-    entry_points={
-        "console_scripts": [
-            "todo=todo_app.app:main",
-        ],
+    options={
+        "build_exe": build_exe_options,
+        "bdist_msi": bdist_msi_options,
     },
-    python_requires=">=3.8",
+    executables=executables,
 )
