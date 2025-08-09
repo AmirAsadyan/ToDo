@@ -1,91 +1,61 @@
-# 📝 ToDo App
+# 📝 اپلیکیشن لیست کارها (ToDo App)
 
-A modern, themeable ToDo application built with Python and Tkinter, packaged for easy installation and use.
+[![Python Version](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-## ✨ Features
+یک اپلیکیشن دسکتاپ مدرن و کاربردی برای ویندوز که به شما کمک می‌کند کارهای روزانه‌تان را با سادگی و زیبایی مدیریت کنید.
 
-- **Create & Manage Tasks:** Add tasks with a name, description, and priority level (low, medium, high).
-- **Theming:** Switch between a sleek **dark mode** and a clean **light mode**.
-- **SVG Icons:** A polished user interface with scalable SVG icons.
-- **Task Prioritization:** Tasks are color-coded based on their priority.
-- **Status Toggling:** Mark tasks as completed with a single click.
-- **Persistent Storage:** Tasks are automatically saved to a local `tasks.csv` file.
-- **CSV Import:** Easily import a list of tasks from a CSV file.
-- **Auto-Cleanup:** Completed tasks older than 24 hours are automatically removed.
-- **Easy Installation:** Packaged as a standard Python application, installable via `pip`.
+## ✨ قابلیت‌ها
 
-## 📂 Project Structure
+- **مدیریت کامل کارها:** افزودن کار با نام، توضیحات و سطح اولویت (پایین، متوسط، بالا).
+- **پوسته‌های متنوع:** جابجایی آسان بین حالت تاریک (Dark Mode) و روشن (Light Mode) برای راحتی چشم.
+- **رابط کاربری زیبا:** استفاده از آیکون‌های SVG برای ظاهری مدرن و مقیاس‌پذیر.
+- **اولویت‌بندی هوشمند:** نمایش کارها با رنگ‌های مختلف بر اساس سطح اولویت آن‌ها.
+- **ذخیره‌سازی دائمی:** کارها به صورت خودکار در یک فایل محلی `tasks.csv` ذخیره می‌شوند.
+- **پاک‌سازی خودکار:** کارهای انجام‌شده‌ که بیش از ۲۴ ساعت از تکمیلشان گذشته باشد، به صورت خودکار حذف می‌شوند.
+- **نصب آسان:** ارائه شده به صورت یک نصب‌کننده استاندارد ویندوز (MSI).
 
+## 🚀 نصب و راه‌اندازی
+
+برای استفاده از این برنامه، می‌توانید فایل نصب `.msi` آن را بسازید و به راحتی نصب کنید.
+
+### پیش‌نیازها
+- پایتون نسخه **۳.۱۱ یا ۳.۱۲** (حتماً از این نسخه‌ها برای ساخت فایل نصب استفاده شود)
+- نصب کتابخانه‌های مورد نیاز از طریق `requirements.txt` و `cx_Freeze`
+
+### مراحل ساخت فایل نصب
+1. ابتدا پروژه را از گیت‌هاب کلون کنید:
 ```bash
-ToDo/
-│
-├── todo_app/
-│ ├── icons/
-│ │ ├── add.svg
-│ │ ├── delete.svg
-│ │ ├── import.svg
-│ │ └── theme_icon.svg
-│ │
-│ ├── init.py
-│ ├── app.py
-│ └── logic.py
-│
-├── .gitignore
-├── LICENSE
-├── MANIFEST.in
-├── README.md
-├── requirements.txt
-├── setup.py
-├── install.bat
-└── uninstall.bat
+git clone https://github.com/AmirAsadyan/ToDo.git
+cd ToDo
 ```
 
-## 🚀 Installation & Usage
-
-### Prerequisites
-
-- **Python 3.8+**
-- `pip` and `venv` (usually included with Python)
-
-### Setup Steps
-
-1.  **Clone the repository:**
-
-    ```bash
-    git clone [https://github.com/AmirAsadyan/ToDo.git](https://github.com/AmirAsadyan/ToDo.git)
-    cd ToDo
-    ```
-
-2.  **(Recommended)** Create and activate a virtual environment:
-
-    ```bash
-    # On Windows
-    python -m venv venv
-    venv\Scripts\activate
-
-    # On macOS/Linux
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
-
-3.  **Install the application:**
-    The following command reads the `setup.py` file, installs all dependencies from `requirements.txt`, and makes the app available as a command-line tool.
-    ```bash
-    pip install .
-    ```
-
-### Running the App
-
-After a successful installation, you can run the application from anywhere in your terminal by simply typing:
-
+2. یک محیط مجازی با پایتون نسخه ۳.۱۲ بسازید و آن را فعال کنید:
 ```bash
-todo
+py -3.11 -m venv venv
+venv\Scripts\activate
 ```
 
-🗑️ Uninstalling
-To completely remove the application and its command from your system, run:
-
+3. کتابخانه‌های مورد نیاز را نصب کنید:
 ```bash
-pip uninstall todo_app
+pip install -r requirements.txt
+pip install cx_Freeze
 ```
 
+4. در نهایت، با استفاده از دستور زیر فایل نصب `.msi` را بسازید:
+```bash
+python setup.py bdist_msi
+```
+
+5. فایل نصب ساخته شده در پوشه `dist` قرار خواهد گرفت. آن را اجرا و برنامه را نصب کنید.
+
+## 🛠️ نحوه استفاده
+
+1. بعد از نصب، برنامه را از منوی استارت یا میانبر دسکتاپ اجرا کنید.
+2. نام، توضیحات و اولویت کار جدید خود را در فیلدهای مشخص شده وارد کنید.
+3. روی دکمه **"افزودن"** کلیک کنید تا کار به لیست اضافه شود.
+4. برای تغییر وضعیت یک کار به "انجام شده"، روی مربع کنار آن در ستون **"وضعیت"** کلیک کنید.
+5. برای حذف کارها، آن‌ها را از لیست انتخاب کرده و روی دکمه **"حذف"** کلیک کنید.
+
+## ✍️ نویسنده
+**امیر اسدیان** - [AmirAsadyan](https://github.com/AmirAsadyan)
