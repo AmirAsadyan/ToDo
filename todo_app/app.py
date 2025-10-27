@@ -212,18 +212,25 @@ class TaskListFrame(ttk.Frame):
         super().__init__(parent, padding="10")
         self.controller = controller
 
-        columns = ("status", "name", "description", "priority")
+        # ستون‌های جدید: status, name, description, priority, category, due_date, due_status
+        columns = ("status", "name", "description", "priority", "category", "due_date", "due_status")
         self.tree = ttk.Treeview(
             self, columns=columns, show="headings", height=15, selectmode="extended"
         )
         self.tree.heading("status", text="وضعیت")
-        self.tree.column("status", width=70, anchor="center")
+        self.tree.column("status", width=60, anchor="center")
         self.tree.heading("name", text="نام کار")
         self.tree.column("name", width=150, anchor="w")
         self.tree.heading("description", text="توضیحات")
-        self.tree.column("description", width=350, anchor="w")
+        self.tree.column("description", width=250, anchor="w")
         self.tree.heading("priority", text="اولویت")
-        self.tree.column("priority", width=100, anchor="center")
+        self.tree.column("priority", width=80, anchor="center")
+        self.tree.heading("category", text="دسته‌بندی")
+        self.tree.column("category", width=100, anchor="center")
+        self.tree.heading("due_date", text="سررسید")
+        self.tree.column("due_date", width=120, anchor="center")
+        self.tree.heading("due_status", text="وضعیت سررسید")
+        self.tree.column("due_status", width=100, anchor="center")
 
         self.tree.bind("<Button-1>", self.controller.handle_tree_click)
         self.tree.bind("<Delete>", self.controller.handle_delete_key)
@@ -235,17 +242,61 @@ class TaskListFrame(ttk.Frame):
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
     def refresh(self, tasks):
+        """لیست کارها را بازخوانی می‌کند."""
         self.tree.delete(*self.tree.get_children())
+
+        # پیکربندی تگ‌های رنگی برای وضعیت سررسید
+        self.tree.tag_configure("overdue", background="#ffcccc")
+        self.tree.tag_configure("due_today", background="#fff9cc")
+
         for i, task in enumerate(tasks):
-            status_text = "☑" if task.status == "انجام شده" else "☐"
+            # نمایش وضعیت با آیکون تیک
+            status_text = "☑" if task.is_completed() else "☐"
+
+            # آیکون تکرارشونده
+            name_display = task.name
+            if task.is_recurring:
+                name_display = f"🔁 {task.name}"
+
+            # نمایش پیشرفت زیرکارها
+            description_display = task.description
+            if task.has_subtasks():
+                progress = task.get_subtask_progress()
+                if progress:
+                    completed, total = progress
+                    description_display = f"{task.description} ({completed}/{total} انجام شده)"
+
+            # دسته‌بندی
+            category_display = task.category if task.category else "بدون دسته"
+
+            # تاریخ سررسید با فرمت نسبی
+            due_date_display = task.get_formatted_due_date()
+
+            # وضعیت سررسید
+            due_status_display = task.get_due_status()
+
+            # تعیین تگ‌ها برای رنگ‌آمیزی
             tags = [task.priority]
-            if task.status == "انجام شده":
+            if task.is_completed():
                 tags.append("done")
+            if task.is_overdue():
+                tags.append("overdue")
+            elif task.is_due_today():
+                tags.append("due_today")
+
             self.tree.insert(
                 "",
                 tk.END,
                 iid=i,
-                values=(status_text, task.name, task.description, task.priority),
+                values=(
+                    status_text,
+                    name_display,
+                    description_display,
+                    task.priority,
+                    category_display,
+                    due_date_display,
+                    due_status_display
+                ),
                 tags=tags,
             )
 
