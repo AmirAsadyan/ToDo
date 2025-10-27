@@ -283,30 +283,115 @@ class ToDoList:
         except Exception as e:
             print(f"خطا در ذخیره فایل: {e}")
 
-    def _cleanup_old_tasks(self):
-        """کارهای انجام شده‌ای که بیش از ۲۴ ساعت از انجامشان گذشته را حذف می‌کند."""
+    def _build_subtask_hierarchy(self):
+        """ساختار زیرکارها را بر اساس parent_id می‌سازد."""
+        # ایجاد دیکشنری برای دسترسی سریع به کارها بر اساس task_id
+        task_dict = {task.task_id: task for task in self.tasks}
+
+        # پیدا کردن زیرکارها و افزودن به والدشان
+        for task in self.tasks:
+            if task.parent_id and task.parent_id in task_dict:
+                parent = task_dict[task.parent_id]
+                parent.subtasks.append(task)
+
+        # مرتب‌سازی زیرکارها بر اساس subtask_order
+        for task in self.tasks:
+            if task.subtasks:
+                task.subtasks.sort(key=lambda st: st.subtask_order if st.subtask_order is not None else 0)
+
+    def get_all_categories(self):
+        """لیست مرتب شده از تمام دسته‌بندی‌ها را برمی‌گرداند."""
+        return sorted(list(self.categories))
+
+    def add_category(self, category_name):
+        """یک دسته‌بندی جدید اضافه می‌کند."""
+        if category_name and category_name.strip():
+            self.categories.add(category_name.strip())
+
+    def update_task(self, index, updated_task):
+        """یک کار را به‌روز می‌کند."""
+        if 0 <= index < len(self.tasks):
+            # حفظ task_id اصلی
+            original_task_id = self.tasks[index].task_id
+            updated_task.task_id = original_task_id
+
+            # جایگزینی کار
+            self.tasks[index] = updated_task
+
+            # افزودن دسته‌بندی جدید اگر وجود ندارد
+            if updated_task.category:
+                self.add_category(updated_task.category)
+
+            self._save_tasks()
+            return True
+        return False
+
+    def _cleanup_old_tasks(self, config=None):
+        """کارهای قدیمی را بر اساس تنظیمات پاکسازی حذف می‌کند."""
+        if config is None:
+            # استفاده از تنظیمات پیش‌فرض (رفتار قدیمی)
+            config = {
+                "enabled": True,
+                "days_old": 1,
+                "status_filter": "completed",
+                "priority_filter": [],
+                "exclude_categories": []
+            }
+
+        if not config.get("enabled", False):
+            return []
+
         now = datetime.now()
+        days_old = config.get("days_old", 1)
+        status_filter = config.get("status_filter", "completed")
+        priority_filter = config.get("priority_filter", [])
+        exclude_cats = config.get("exclude_categories", [])
+        cutoff_date = now - timedelta(days=days_old)
+
         tasks_to_keep = []
-        tasks_were_deleted = False
+        tasks_cleaned = []
 
         for task in self.tasks:
-            # فقط کارهایی که انجام شده و تاریخ انجام دارند را بررسی کن
-            if task.status == "انجام شده" and task.completion_date:
+            should_cleanup = False
+
+            # بررسی دسته‌بندی استثنا شده
+            if task.category in exclude_cats:
+                tasks_to_keep.append(task)
+                continue
+
+            # بررسی فیلتر وضعیت
+            if status_filter == "completed" and task.status != "انجام شده":
+                tasks_to_keep.append(task)
+                continue
+            if status_filter == "incomplete" and task.status == "انجام شده":
+                tasks_to_keep.append(task)
+                continue
+
+            # بررسی فیلتر اولویت
+            if priority_filter and task.priority not in priority_filter:
+                tasks_to_keep.append(task)
+                continue
+
+            # بررسی سن کار
+            if status_filter == "completed" and task.completion_date:
                 try:
                     completion_time = datetime.fromisoformat(task.completion_date)
-                    # اگر بیشتر از ۲۴ ساعت گذشته بود، آن را به لیست جدید اضافه نکن
-                    if now - completion_time > timedelta(hours=24):
-                        tasks_were_deleted = True
-                        continue  # این کار حذف می‌شود
+                    if completion_time < cutoff_date:
+                        should_cleanup = True
                 except (ValueError, TypeError):
-                    pass  # اگر تاریخ فرمت درستی نداشت، نادیده بگیر
+                    pass
 
-            tasks_to_keep.append(task)
+            if should_cleanup:
+                tasks_cleaned.append(task)
+            else:
+                tasks_to_keep.append(task)
 
-        # اگر کاری حذف شده بود، لیست اصلی را به‌روز کرده و فایل را ذخیره کن
-        if tasks_were_deleted:
+        # به‌روزرسانی لیست کارها
+        if tasks_cleaned:
             self.tasks = tasks_to_keep
             self._save_tasks()
+
+        return tasks_cleaned
 
     def add_task(self, task):
         self.tasks.append(task)
