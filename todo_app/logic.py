@@ -491,32 +491,74 @@ class ToDoList:
             return None
 
     def import_from_csv(self, filepath):
+        """کارها را از یک فایل CSV خارجی وارد می‌کند."""
         try:
             with open(filepath, mode="r", newline="", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 header = next(reader, None)
-                required_header = [
-                    "Name",
-                    "Description",
-                    "Priority",
-                    "Status",
-                    "CompletionDate",
-                ]
-                if header != required_header:
-                    return False, f"فایل CSV باید شامل ستون‌های {required_header} باشد."
+
+                if not header:
+                    return False, "فایل CSV خالی است."
+
+                imported_count = 0
+
                 for row in reader:
-                    if row:
-                        completion_date = row[4] if row[4] else None
-                        self.tasks.append(
-                            Task(
-                                name=row[0],
-                                description=row[1],
-                                priority=row[2],
-                                status=row[3],
-                                completion_date=completion_date,
-                            )
+                    if not row:
+                        continue
+
+                    # پشتیبانی از فرمت جدید (16 ستون)
+                    if len(row) >= 16:
+                        notes = ""
+                        if row[15]:
+                            try:
+                                notes = base64.b64decode(row[15]).decode('utf-8')
+                            except Exception:
+                                notes = ""
+
+                        recurrence_pattern = None
+                        is_recurring = row[10].lower() == "true"
+                        if is_recurring and row[11]:
+                            recurrence_pattern = {
+                                "type": row[11],
+                                "interval": int(row[12]) if row[12] else 1,
+                                "weekdays": [int(d) for d in row[13].split(",")] if row[13] else [],
+                                "end_date": row[14] if row[14] else None
+                            }
+
+                        task = Task(
+                            task_id=row[0],
+                            name=row[1],
+                            description=row[2],
+                            priority=row[3],
+                            status=row[4],
+                            completion_date=row[5] if row[5] else None,
+                            due_date=row[6] if row[6] else None,
+                            category=row[7] if row[7] else "بدون دسته",
+                            parent_id=row[8] if row[8] else None,
+                            subtask_order=int(row[9]) if row[9] else None,
+                            is_recurring=is_recurring,
+                            recurrence_pattern=recurrence_pattern,
+                            notes=notes
                         )
+                        self.tasks.append(task)
+                        if task.category:
+                            self.add_category(task.category)
+                        imported_count += 1
+
+                    # پشتیبانی از فرمت قدیمی (5 ستون)
+                    elif len(row) >= 4:
+                        completion_date = row[4] if len(row) > 4 and row[4] else None
+                        task = Task(
+                            name=row[0],
+                            description=row[1],
+                            priority=row[2],
+                            status=row[3],
+                            completion_date=completion_date,
+                        )
+                        self.tasks.append(task)
+                        imported_count += 1
+
             self._save_tasks()
-            return True, "کارها با موفقیت از فایل CSV اضافه شدند."
+            return True, f"{imported_count} کار با موفقیت وارد شد."
         except Exception as e:
             return False, f"خطا در پردازش فایل CSV: {e}"
