@@ -122,17 +122,12 @@ class InputFrame(ttk.Frame):
         super().__init__(parent, padding="10")
         self.controller = controller
 
+        # ردیف اول: نام و اولویت
         ttk.Label(self, text="نام کار:").grid(
             row=0, column=0, padx=5, pady=5, sticky="w"
         )
         self.name_entry = ttk.Entry(self, width=30)
         self.name_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-        ttk.Label(self, text="توضیحات:").grid(
-            row=1, column=0, padx=5, pady=5, sticky="w"
-        )
-        self.desc_entry = ttk.Entry(self, width=50)
-        self.desc_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
         ttk.Label(self, text="اولویت:").grid(
             row=0, column=2, padx=5, pady=5, sticky="w"
@@ -155,6 +150,29 @@ class InputFrame(ttk.Frame):
             priority_frame, text="بالا", variable=controller.priority_var, value="بالا"
         ).pack(side=tk.LEFT)
 
+        # ردیف دوم: توضیحات
+        ttk.Label(self, text="توضیحات:").grid(
+            row=1, column=0, padx=5, pady=5, sticky="w"
+        )
+        self.desc_entry = ttk.Entry(self, width=50)
+        self.desc_entry.grid(row=1, column=1, columnspan=3, padx=5, pady=5, sticky="ew")
+
+        # ردیف سوم: تاریخ سررسید و دسته‌بندی
+        ttk.Label(self, text="تاریخ سررسید (YYYY-MM-DD):").grid(
+            row=2, column=0, padx=5, pady=5, sticky="w"
+        )
+        self.due_date_entry = ttk.Entry(self, width=20)
+        self.due_date_entry.grid(row=2, column=1, padx=5, pady=5, sticky="w")
+        self.due_date_entry.insert(0, "")
+
+        ttk.Label(self, text="دسته‌بندی:").grid(
+            row=2, column=2, padx=5, pady=5, sticky="w"
+        )
+        self.category_combo = ttk.Combobox(self, width=18, state="normal")
+        self.category_combo.grid(row=2, column=3, padx=5, pady=5, sticky="w")
+        self.update_categories()
+
+        # دکمه افزودن
         add_icon = self.controller.icon_manager.get_icon("Add.svg")
         add_button = ttk.Button(
             self,
@@ -165,8 +183,27 @@ class InputFrame(ttk.Frame):
         )
         if not add_icon:
             add_button.config(text="افزودن کار")
-        add_button.grid(row=1, column=3, padx=10, pady=10, sticky="e")
+        add_button.grid(row=3, column=3, padx=10, pady=10, sticky="e")
+
         self.columnconfigure(1, weight=1)
+
+    def update_categories(self):
+        """به‌روزرسانی لیست دسته‌بندی‌ها."""
+        categories = self.controller.todo_list.get_all_categories()
+        self.category_combo['values'] = categories
+        if categories and "بدون دسته" in categories:
+            self.category_combo.set("بدون دسته")
+        elif categories:
+            self.category_combo.set(categories[0])
+        else:
+            self.category_combo.set("بدون دسته")
+
+    def clear_inputs(self):
+        """پاک کردن تمام فیلدهای ورودی."""
+        self.name_entry.delete(0, tk.END)
+        self.desc_entry.delete(0, tk.END)
+        self.due_date_entry.delete(0, tk.END)
+        self.category_combo.set("بدون دسته")
 
 
 # ------------------ فریم لیست کارها ------------------
