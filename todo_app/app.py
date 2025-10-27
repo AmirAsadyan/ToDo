@@ -385,16 +385,45 @@ class TodoApp(tk.Tk):
         self.theme_manager.apply_theme()
 
     def add_task(self):
+        """کار جدید اضافه می‌کند."""
         name = self.input_frame.name_entry.get()
         if not name:
             messagebox.showwarning("ورودی نامعتبر", "نام کار نمی‌تواند خالی باشد.")
             return
-        self.todo_list.add_task(
-            Task(name, self.input_frame.desc_entry.get(), self.priority_var.get())
+
+        # دریافت تاریخ سررسید
+        due_date = self.input_frame.due_date_entry.get().strip()
+        if due_date:
+            # اعتبارسنجی ساده فرمت تاریخ
+            try:
+                from datetime import datetime
+                datetime.fromisoformat(due_date)
+            except ValueError:
+                messagebox.showwarning("تاریخ نامعتبر", "لطفاً تاریخ را به فرمت YYYY-MM-DD وارد کنید.")
+                return
+        else:
+            due_date = None
+
+        # دریافت دسته‌بندی
+        category = self.input_frame.category_combo.get().strip()
+        if not category:
+            category = "بدون دسته"
+
+        # ایجاد کار جدید
+        task = Task(
+            name=name,
+            description=self.input_frame.desc_entry.get(),
+            priority=self.priority_var.get(),
+            due_date=due_date,
+            category=category
         )
+
+        self.todo_list.add_task(task)
         self.refresh_task_list()
-        self.input_frame.name_entry.delete(0, tk.END)
-        self.input_frame.desc_entry.delete(0, tk.END)
+
+        # پاک کردن فیلدها و به‌روزرسانی لیست دسته‌بندی‌ها
+        self.input_frame.clear_inputs()
+        self.input_frame.update_categories()
         self.input_frame.name_entry.focus_set()
 
     def handle_tree_click(self, event):
