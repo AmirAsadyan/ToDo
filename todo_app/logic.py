@@ -259,13 +259,27 @@ class ToDoList:
     def _save_tasks(self):
         """کل لیست کارها را در فایل CSV اصلی برنامه ذخیره می‌کند."""
         try:
-            with open(self.filename, mode="w", newline="", encoding="utf-8") as file:
+            with open(self.filename, mode="w", newline="", encoding="utf-8-sig") as file:
                 writer = csv.writer(file)
-                writer.writerow(
-                    ["Name", "Description", "Priority", "Status", "CompletionDate"]
-                )
-                for task in self.tasks:
+                # نوشتن هدر جدید با تمام ستون‌ها
+                writer.writerow([
+                    "TaskID", "Name", "Description", "Priority", "Status",
+                    "CompletionDate", "DueDate", "Category", "ParentID", "SubtaskOrder",
+                    "IsRecurring", "RecurrenceType", "RecurrenceInterval",
+                    "RecurrenceWeekdays", "RecurrenceEndDate", "Notes"
+                ])
+
+                # ذخیره کارهای والد ابتدا، سپس زیرکارها
+                def write_task_and_subtasks(task):
                     writer.writerow(task.to_list())
+                    for subtask in task.subtasks:
+                        write_task_and_subtasks(subtask)
+
+                # نوشتن فقط کارهای ریشه (بدون parent)
+                for task in self.tasks:
+                    if not task.parent_id:
+                        write_task_and_subtasks(task)
+
         except Exception as e:
             print(f"خطا در ذخیره فایل: {e}")
 
