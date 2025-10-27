@@ -122,17 +122,12 @@ class InputFrame(ttk.Frame):
         super().__init__(parent, padding="10")
         self.controller = controller
 
+        # ردیف اول: نام و اولویت
         ttk.Label(self, text="نام کار:").grid(
             row=0, column=0, padx=5, pady=5, sticky="w"
         )
         self.name_entry = ttk.Entry(self, width=30)
         self.name_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-        ttk.Label(self, text="توضیحات:").grid(
-            row=1, column=0, padx=5, pady=5, sticky="w"
-        )
-        self.desc_entry = ttk.Entry(self, width=50)
-        self.desc_entry.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
 
         ttk.Label(self, text="اولویت:").grid(
             row=0, column=2, padx=5, pady=5, sticky="w"
@@ -155,6 +150,29 @@ class InputFrame(ttk.Frame):
             priority_frame, text="بالا", variable=controller.priority_var, value="بالا"
         ).pack(side=tk.LEFT)
 
+        # ردیف دوم: توضیحات
+        ttk.Label(self, text="توضیحات:").grid(
+            row=1, column=0, padx=5, pady=5, sticky="w"
+        )
+        self.desc_entry = ttk.Entry(self, width=50)
+        self.desc_entry.grid(row=1, column=1, columnspan=3, padx=5, pady=5, sticky="ew")
+
+        # ردیف سوم: تاریخ سررسید و دسته‌بندی
+        ttk.Label(self, text="تاریخ سررسید (YYYY-MM-DD):").grid(
+            row=2, column=0, padx=5, pady=5, sticky="w"
+        )
+        self.due_date_entry = ttk.Entry(self, width=20)
+        self.due_date_entry.grid(row=2, column=1, padx=5, pady=5, sticky="w")
+        self.due_date_entry.insert(0, "")
+
+        ttk.Label(self, text="دسته‌بندی:").grid(
+            row=2, column=2, padx=5, pady=5, sticky="w"
+        )
+        self.category_combo = ttk.Combobox(self, width=18, state="normal")
+        self.category_combo.grid(row=2, column=3, padx=5, pady=5, sticky="w")
+        self.update_categories()
+
+        # دکمه افزودن
         add_icon = self.controller.icon_manager.get_icon("Add.svg")
         add_button = ttk.Button(
             self,
@@ -165,8 +183,27 @@ class InputFrame(ttk.Frame):
         )
         if not add_icon:
             add_button.config(text="افزودن کار")
-        add_button.grid(row=1, column=3, padx=10, pady=10, sticky="e")
+        add_button.grid(row=3, column=3, padx=10, pady=10, sticky="e")
+
         self.columnconfigure(1, weight=1)
+
+    def update_categories(self):
+        """به‌روزرسانی لیست دسته‌بندی‌ها."""
+        categories = self.controller.todo_list.get_all_categories()
+        self.category_combo['values'] = categories
+        if categories and "بدون دسته" in categories:
+            self.category_combo.set("بدون دسته")
+        elif categories:
+            self.category_combo.set(categories[0])
+        else:
+            self.category_combo.set("بدون دسته")
+
+    def clear_inputs(self):
+        """پاک کردن تمام فیلدهای ورودی."""
+        self.name_entry.delete(0, tk.END)
+        self.desc_entry.delete(0, tk.END)
+        self.due_date_entry.delete(0, tk.END)
+        self.category_combo.set("بدون دسته")
 
 
 # ------------------ فریم لیست کارها ------------------
@@ -175,18 +212,25 @@ class TaskListFrame(ttk.Frame):
         super().__init__(parent, padding="10")
         self.controller = controller
 
-        columns = ("status", "name", "description", "priority")
+        # ستون‌های جدید: status, name, description, priority, category, due_date, due_status
+        columns = ("status", "name", "description", "priority", "category", "due_date", "due_status")
         self.tree = ttk.Treeview(
             self, columns=columns, show="headings", height=15, selectmode="extended"
         )
         self.tree.heading("status", text="وضعیت")
-        self.tree.column("status", width=70, anchor="center")
+        self.tree.column("status", width=60, anchor="center")
         self.tree.heading("name", text="نام کار")
         self.tree.column("name", width=150, anchor="w")
         self.tree.heading("description", text="توضیحات")
-        self.tree.column("description", width=350, anchor="w")
+        self.tree.column("description", width=250, anchor="w")
         self.tree.heading("priority", text="اولویت")
-        self.tree.column("priority", width=100, anchor="center")
+        self.tree.column("priority", width=80, anchor="center")
+        self.tree.heading("category", text="دسته‌بندی")
+        self.tree.column("category", width=100, anchor="center")
+        self.tree.heading("due_date", text="سررسید")
+        self.tree.column("due_date", width=120, anchor="center")
+        self.tree.heading("due_status", text="وضعیت سررسید")
+        self.tree.column("due_status", width=100, anchor="center")
 
         self.tree.bind("<Button-1>", self.controller.handle_tree_click)
         self.tree.bind("<Delete>", self.controller.handle_delete_key)
@@ -198,17 +242,61 @@ class TaskListFrame(ttk.Frame):
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
     def refresh(self, tasks):
+        """لیست کارها را بازخوانی می‌کند."""
         self.tree.delete(*self.tree.get_children())
+
+        # پیکربندی تگ‌های رنگی برای وضعیت سررسید
+        self.tree.tag_configure("overdue", background="#ffcccc")
+        self.tree.tag_configure("due_today", background="#fff9cc")
+
         for i, task in enumerate(tasks):
-            status_text = "☑" if task.status == "انجام شده" else "☐"
+            # نمایش وضعیت با آیکون تیک
+            status_text = "☑" if task.is_completed() else "☐"
+
+            # آیکون تکرارشونده
+            name_display = task.name
+            if task.is_recurring:
+                name_display = f"🔁 {task.name}"
+
+            # نمایش پیشرفت زیرکارها
+            description_display = task.description
+            if task.has_subtasks():
+                progress = task.get_subtask_progress()
+                if progress:
+                    completed, total = progress
+                    description_display = f"{task.description} ({completed}/{total} انجام شده)"
+
+            # دسته‌بندی
+            category_display = task.category if task.category else "بدون دسته"
+
+            # تاریخ سررسید با فرمت نسبی
+            due_date_display = task.get_formatted_due_date()
+
+            # وضعیت سررسید
+            due_status_display = task.get_due_status()
+
+            # تعیین تگ‌ها برای رنگ‌آمیزی
             tags = [task.priority]
-            if task.status == "انجام شده":
+            if task.is_completed():
                 tags.append("done")
+            if task.is_overdue():
+                tags.append("overdue")
+            elif task.is_due_today():
+                tags.append("due_today")
+
             self.tree.insert(
                 "",
                 tk.END,
                 iid=i,
-                values=(status_text, task.name, task.description, task.priority),
+                values=(
+                    status_text,
+                    name_display,
+                    description_display,
+                    task.priority,
+                    category_display,
+                    due_date_display,
+                    due_status_display
+                ),
                 tags=tags,
             )
 
@@ -222,6 +310,7 @@ class ActionFrame(ttk.Frame):
         self.status_label = ttk.Label(self, text="")
         self.status_label.pack(side=tk.TOP, fill=tk.X, pady=2)
 
+        # سمت چپ: دکمه‌های تنظیمات و نمایش
         theme_icon = self.controller.icon_manager.get_icon("Dark_Mode.svg")
         theme_button = ttk.Button(
             self,
@@ -234,18 +323,20 @@ class ActionFrame(ttk.Frame):
             theme_button.config(text="تغییر تم 🌓")
         theme_button.pack(side=tk.LEFT, padx=(0, 5))
 
+        # دکمه‌های وارد/صادر کردن
         import_icon = self.controller.icon_manager.get_icon("Import.svg")
         import_button = ttk.Button(
             self,
-            text=" Import",
+            text=" وارد کردن",
             image=import_icon,
             compound="left",
             command=self.controller.import_from_csv_dialog,
         )
         if not import_icon:
-            import_button.config(text="Import")
+            import_button.config(text="وارد کردن")
         import_button.pack(side=tk.LEFT, padx=5)
 
+        # سمت راست: دکمه‌های عملیاتی
         delete_icon = self.controller.icon_manager.get_icon("Delete.svg")
         delete_button = ttk.Button(
             self,
@@ -257,6 +348,19 @@ class ActionFrame(ttk.Frame):
         if not delete_icon:
             delete_button.config(text="حذف")
         delete_button.pack(side=tk.RIGHT, padx=5)
+
+        # دکمه ویرایش
+        edit_icon = self.controller.icon_manager.get_icon("Edit.svg")
+        self.edit_button = ttk.Button(
+            self,
+            text=" ویرایش",
+            image=edit_icon,
+            compound="left",
+            command=self.controller.edit_task_dialog,
+        )
+        if not edit_icon:
+            self.edit_button.config(text="ویرایش")
+        self.edit_button.pack(side=tk.RIGHT, padx=5)
 
 
 # ------------------ کلاس اصلی برنامه ------------------
@@ -297,16 +401,45 @@ class TodoApp(tk.Tk):
         self.theme_manager.apply_theme()
 
     def add_task(self):
+        """کار جدید اضافه می‌کند."""
         name = self.input_frame.name_entry.get()
         if not name:
             messagebox.showwarning("ورودی نامعتبر", "نام کار نمی‌تواند خالی باشد.")
             return
-        self.todo_list.add_task(
-            Task(name, self.input_frame.desc_entry.get(), self.priority_var.get())
+
+        # دریافت تاریخ سررسید
+        due_date = self.input_frame.due_date_entry.get().strip()
+        if due_date:
+            # اعتبارسنجی ساده فرمت تاریخ
+            try:
+                from datetime import datetime
+                datetime.fromisoformat(due_date)
+            except ValueError:
+                messagebox.showwarning("تاریخ نامعتبر", "لطفاً تاریخ را به فرمت YYYY-MM-DD وارد کنید.")
+                return
+        else:
+            due_date = None
+
+        # دریافت دسته‌بندی
+        category = self.input_frame.category_combo.get().strip()
+        if not category:
+            category = "بدون دسته"
+
+        # ایجاد کار جدید
+        task = Task(
+            name=name,
+            description=self.input_frame.desc_entry.get(),
+            priority=self.priority_var.get(),
+            due_date=due_date,
+            category=category
         )
+
+        self.todo_list.add_task(task)
         self.refresh_task_list()
-        self.input_frame.name_entry.delete(0, tk.END)
-        self.input_frame.desc_entry.delete(0, tk.END)
+
+        # پاک کردن فیلدها و به‌روزرسانی لیست دسته‌بندی‌ها
+        self.input_frame.clear_inputs()
+        self.input_frame.update_categories()
         self.input_frame.name_entry.focus_set()
 
     def handle_tree_click(self, event):
@@ -367,6 +500,147 @@ class TodoApp(tk.Tk):
             messagebox.showinfo("موفقیت", message)
         else:
             messagebox.showerror("خطا", message)
+
+    def edit_task_dialog(self):
+        """دیالوگ ویرایش کار را نمایش می‌دهد."""
+        selected_items = self.task_list_frame.tree.selection()
+
+        if not selected_items:
+            messagebox.showwarning("انتخاب نشده", "لطفاً یک کار برای ویرایش انتخاب کنید.")
+            return
+
+        if len(selected_items) > 1:
+            messagebox.showwarning("انتخاب چندگانه", "لطفاً فقط یک کار برای ویرایش انتخاب کنید.")
+            return
+
+        task_index = int(selected_items[0])
+        task = self.todo_list.tasks[task_index]
+
+        # ایجاد پنجره مدال
+        dialog = tk.Toplevel(self)
+        dialog.title("ویرایش کار")
+        dialog.geometry("600x500")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        # مرکز کردن پنجره
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (600 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (500 // 2)
+        dialog.geometry(f"600x500+{x}+{y}")
+
+        # فریم اصلی
+        main_frame = ttk.Frame(dialog, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # نام کار
+        ttk.Label(main_frame, text="نام کار:").grid(row=0, column=0, padx=5, pady=10, sticky="w")
+        name_entry = ttk.Entry(main_frame, width=40)
+        name_entry.insert(0, task.name)
+        name_entry.grid(row=0, column=1, columnspan=2, padx=5, pady=10, sticky="ew")
+
+        # توضیحات
+        ttk.Label(main_frame, text="توضیحات:").grid(row=1, column=0, padx=5, pady=10, sticky="w")
+        desc_entry = ttk.Entry(main_frame, width=40)
+        desc_entry.insert(0, task.description)
+        desc_entry.grid(row=1, column=1, columnspan=2, padx=5, pady=10, sticky="ew")
+
+        # اولویت
+        ttk.Label(main_frame, text="اولویت:").grid(row=2, column=0, padx=5, pady=10, sticky="w")
+        priority_var = tk.StringVar(value=task.priority)
+        priority_frame = ttk.Frame(main_frame)
+        priority_frame.grid(row=2, column=1, columnspan=2, padx=5, pady=10, sticky="w")
+        ttk.Radiobutton(priority_frame, text="پایین", variable=priority_var, value="پایین").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(priority_frame, text="متوسط", variable=priority_var, value="متوسط").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(priority_frame, text="بالا", variable=priority_var, value="بالا").pack(side=tk.LEFT, padx=5)
+
+        # تاریخ سررسید
+        ttk.Label(main_frame, text="تاریخ سررسید (YYYY-MM-DD):").grid(row=3, column=0, padx=5, pady=10, sticky="w")
+        due_date_entry = ttk.Entry(main_frame, width=20)
+        due_date_entry.insert(0, task.due_date if task.due_date else "")
+        due_date_entry.grid(row=3, column=1, padx=5, pady=10, sticky="w")
+
+        # دسته‌بندی
+        ttk.Label(main_frame, text="دسته‌بندی:").grid(row=4, column=0, padx=5, pady=10, sticky="w")
+        category_combo = ttk.Combobox(main_frame, width=18, state="normal")
+        category_combo['values'] = self.todo_list.get_all_categories()
+        category_combo.set(task.category if task.category else "بدون دسته")
+        category_combo.grid(row=4, column=1, padx=5, pady=10, sticky="w")
+
+        # وضعیت (انجام شده / انجام نشده)
+        status_var = tk.BooleanVar(value=task.is_completed())
+        status_check = ttk.Checkbutton(main_frame, text="انجام شده", variable=status_var)
+        status_check.grid(row=5, column=1, padx=5, pady=10, sticky="w")
+
+        # دکمه‌های ذخیره و انصراف
+        button_frame = ttk.Frame(main_frame)
+        button_frame.grid(row=6, column=0, columnspan=3, pady=20, sticky="e")
+
+        def save_changes():
+            new_name = name_entry.get().strip()
+            if not new_name:
+                messagebox.showwarning("ورودی نامعتبر", "نام کار نمی‌تواند خالی باشد.", parent=dialog)
+                return
+
+            # اعتبارسنجی تاریخ
+            new_due_date = due_date_entry.get().strip()
+            if new_due_date:
+                try:
+                    from datetime import datetime
+                    datetime.fromisoformat(new_due_date)
+                except ValueError:
+                    messagebox.showwarning("تاریخ نامعتبر", "لطفاً تاریخ را به فرمت YYYY-MM-DD وارد کنید.", parent=dialog)
+                    return
+            else:
+                new_due_date = None
+
+            new_category = category_combo.get().strip()
+            if not new_category:
+                new_category = "بدون دسته"
+
+            # تعیین وضعیت و تاریخ انجام
+            new_status = "انجام شده" if status_var.get() else "انجام نشده"
+            new_completion_date = task.completion_date
+
+            if new_status == "انجام شده" and not task.is_completed():
+                # کار تازه انجام شده
+                from datetime import datetime
+                new_completion_date = datetime.now().isoformat()
+            elif new_status == "انجام نشده" and task.is_completed():
+                # کار به حالت انجام نشده برگشته
+                new_completion_date = None
+
+            # ایجاد کار به‌روز شده
+            updated_task = Task(
+                name=new_name,
+                description=desc_entry.get(),
+                priority=priority_var.get(),
+                status=new_status,
+                completion_date=new_completion_date,
+                due_date=new_due_date,
+                category=new_category,
+                task_id=task.task_id,
+                is_recurring=task.is_recurring,
+                recurrence_pattern=task.recurrence_pattern,
+                notes=task.notes
+            )
+
+            # به‌روزرسانی کار
+            self.todo_list.update_task(task_index, updated_task)
+            self.refresh_task_list()
+            self.input_frame.update_categories()
+            dialog.destroy()
+
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(button_frame, text="ذخیره تغییرات", command=save_changes).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="انصراف", command=cancel).pack(side=tk.RIGHT, padx=5)
+
+        main_frame.columnconfigure(1, weight=1)
+
+        # اعمال تم
+        self.theme_manager.apply_theme()
 
     def show_congrats_popup(self):
         popup = tk.Toplevel(self)
