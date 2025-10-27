@@ -165,9 +165,12 @@ class ToDoList:
     def __init__(self, filename="tasks.csv"):
         self.filename = filename
         self.tasks = []
+        self.categories = set()
+        self._default_categories = ["بدون دسته", "کاری", "شخصی", "خانه", "خرید", "مطالعه"]
+        self.categories.update(self._default_categories)
         self._load_tasks()
         # در ابتدای اجرای برنامه، کارهای قدیمی را پاک کن
-        self._cleanup_old_tasks()
+        # self._cleanup_old_tasks()  # Will be replaced with configurable cleanup
 
     def _load_tasks(self):
         """کارها را از فایل CSV اصلی برنامه بارگذاری می‌کند."""
