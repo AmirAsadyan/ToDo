@@ -1,1 +1,6 @@
 tksvg
+plyer
+matplotlib
+openpyxl
+markdown2
+tkhtmlview
