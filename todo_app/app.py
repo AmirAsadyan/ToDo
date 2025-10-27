@@ -310,6 +310,7 @@ class ActionFrame(ttk.Frame):
         self.status_label = ttk.Label(self, text="")
         self.status_label.pack(side=tk.TOP, fill=tk.X, pady=2)
 
+        # سمت چپ: دکمه‌های تنظیمات و نمایش
         theme_icon = self.controller.icon_manager.get_icon("Dark_Mode.svg")
         theme_button = ttk.Button(
             self,
@@ -322,18 +323,20 @@ class ActionFrame(ttk.Frame):
             theme_button.config(text="تغییر تم 🌓")
         theme_button.pack(side=tk.LEFT, padx=(0, 5))
 
+        # دکمه‌های وارد/صادر کردن
         import_icon = self.controller.icon_manager.get_icon("Import.svg")
         import_button = ttk.Button(
             self,
-            text=" Import",
+            text=" وارد کردن",
             image=import_icon,
             compound="left",
             command=self.controller.import_from_csv_dialog,
         )
         if not import_icon:
-            import_button.config(text="Import")
+            import_button.config(text="وارد کردن")
         import_button.pack(side=tk.LEFT, padx=5)
 
+        # سمت راست: دکمه‌های عملیاتی
         delete_icon = self.controller.icon_manager.get_icon("Delete.svg")
         delete_button = ttk.Button(
             self,
@@ -345,6 +348,19 @@ class ActionFrame(ttk.Frame):
         if not delete_icon:
             delete_button.config(text="حذف")
         delete_button.pack(side=tk.RIGHT, padx=5)
+
+        # دکمه ویرایش
+        edit_icon = self.controller.icon_manager.get_icon("Edit.svg")
+        self.edit_button = ttk.Button(
+            self,
+            text=" ویرایش",
+            image=edit_icon,
+            compound="left",
+            command=self.controller.edit_task_dialog,
+        )
+        if not edit_icon:
+            self.edit_button.config(text="ویرایش")
+        self.edit_button.pack(side=tk.RIGHT, padx=5)
 
 
 # ------------------ کلاس اصلی برنامه ------------------
