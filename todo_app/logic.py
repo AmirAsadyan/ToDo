@@ -180,28 +180,79 @@ class ToDoList:
             with open(self.filename, mode="r", newline="", encoding="utf-8") as file:
                 reader = csv.reader(file)
                 header = next(reader, None)
+
                 for row in reader:
-                    if len(row) == 5:  # برای سازگاری با فایل‌های جدید
-                        # اگر تاریخ خالی بود، None را جایگزین کن
+                    if not row:
+                        continue
+
+                    # پشتیبانی از فرمت جدید (16 ستون)
+                    if len(row) >= 16:
+                        # رمزگشایی notes از base64
+                        notes = ""
+                        if row[15]:
+                            try:
+                                notes = base64.b64decode(row[15]).decode('utf-8')
+                            except Exception:
+                                notes = ""
+
+                        # ساخت recurrence_pattern از ستون‌های CSV
+                        recurrence_pattern = None
+                        is_recurring = row[10].lower() == "true"
+                        if is_recurring and row[11]:
+                            recurrence_pattern = {
+                                "type": row[11],
+                                "interval": int(row[12]) if row[12] else 1,
+                                "weekdays": [int(d) for d in row[13].split(",")] if row[13] else [],
+                                "end_date": row[14] if row[14] else None
+                            }
+
+                        task = Task(
+                            task_id=row[0],
+                            name=row[1],
+                            description=row[2],
+                            priority=row[3],
+                            status=row[4],
+                            completion_date=row[5] if row[5] else None,
+                            due_date=row[6] if row[6] else None,
+                            category=row[7] if row[7] else "بدون دسته",
+                            parent_id=row[8] if row[8] else None,
+                            subtask_order=int(row[9]) if row[9] else None,
+                            is_recurring=is_recurring,
+                            recurrence_pattern=recurrence_pattern,
+                            notes=notes
+                        )
+
+                        # افزودن دسته‌بندی به لیست دسته‌بندی‌ها
+                        if task.category:
+                            self.categories.add(task.category)
+
+                        self.tasks.append(task)
+
+                    # پشتیبانی از فرمت قدیمی (5 ستون)
+                    elif len(row) == 5:
                         completion_date = row[4] if row[4] else None
-                        self.tasks.append(
-                            Task(
-                                name=row[0],
-                                description=row[1],
-                                priority=row[2],
-                                status=row[3],
-                                completion_date=completion_date,
-                            )
+                        task = Task(
+                            name=row[0],
+                            description=row[1],
+                            priority=row[2],
+                            status=row[3],
+                            completion_date=completion_date,
                         )
-                    elif len(row) == 4:  # برای سازگاری با فایل‌های قدیمی‌تر
-                        self.tasks.append(
-                            Task(
-                                name=row[0],
-                                description=row[1],
-                                priority=row[2],
-                                status=row[3],
-                            )
+                        self.tasks.append(task)
+
+                    # پشتیبانی از فرمت قدیمی‌تر (4 ستون)
+                    elif len(row) == 4:
+                        task = Task(
+                            name=row[0],
+                            description=row[1],
+                            priority=row[2],
+                            status=row[3],
                         )
+                        self.tasks.append(task)
+
+                # ساخت ساختار زیرکار بر اساس parent_id
+                self._build_subtask_hierarchy()
+
         except Exception as e:
             print(f"خطا در بارگذاری فایل: {e}")
 
