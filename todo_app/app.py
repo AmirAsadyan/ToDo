@@ -501,6 +501,147 @@ class TodoApp(tk.Tk):
         else:
             messagebox.showerror("خطا", message)
 
+    def edit_task_dialog(self):
+        """دیالوگ ویرایش کار را نمایش می‌دهد."""
+        selected_items = self.task_list_frame.tree.selection()
+
+        if not selected_items:
+            messagebox.showwarning("انتخاب نشده", "لطفاً یک کار برای ویرایش انتخاب کنید.")
+            return
+
+        if len(selected_items) > 1:
+            messagebox.showwarning("انتخاب چندگانه", "لطفاً فقط یک کار برای ویرایش انتخاب کنید.")
+            return
+
+        task_index = int(selected_items[0])
+        task = self.todo_list.tasks[task_index]
+
+        # ایجاد پنجره مدال
+        dialog = tk.Toplevel(self)
+        dialog.title("ویرایش کار")
+        dialog.geometry("600x500")
+        dialog.transient(self)
+        dialog.grab_set()
+
+        # مرکز کردن پنجره
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (600 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (500 // 2)
+        dialog.geometry(f"600x500+{x}+{y}")
+
+        # فریم اصلی
+        main_frame = ttk.Frame(dialog, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # نام کار
+        ttk.Label(main_frame, text="نام کار:").grid(row=0, column=0, padx=5, pady=10, sticky="w")
+        name_entry = ttk.Entry(main_frame, width=40)
+        name_entry.insert(0, task.name)
+        name_entry.grid(row=0, column=1, columnspan=2, padx=5, pady=10, sticky="ew")
+
+        # توضیحات
+        ttk.Label(main_frame, text="توضیحات:").grid(row=1, column=0, padx=5, pady=10, sticky="w")
+        desc_entry = ttk.Entry(main_frame, width=40)
+        desc_entry.insert(0, task.description)
+        desc_entry.grid(row=1, column=1, columnspan=2, padx=5, pady=10, sticky="ew")
+
+        # اولویت
+        ttk.Label(main_frame, text="اولویت:").grid(row=2, column=0, padx=5, pady=10, sticky="w")
+        priority_var = tk.StringVar(value=task.priority)
+        priority_frame = ttk.Frame(main_frame)
+        priority_frame.grid(row=2, column=1, columnspan=2, padx=5, pady=10, sticky="w")
+        ttk.Radiobutton(priority_frame, text="پایین", variable=priority_var, value="پایین").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(priority_frame, text="متوسط", variable=priority_var, value="متوسط").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(priority_frame, text="بالا", variable=priority_var, value="بالا").pack(side=tk.LEFT, padx=5)
+
+        # تاریخ سررسید
+        ttk.Label(main_frame, text="تاریخ سررسید (YYYY-MM-DD):").grid(row=3, column=0, padx=5, pady=10, sticky="w")
+        due_date_entry = ttk.Entry(main_frame, width=20)
+        due_date_entry.insert(0, task.due_date if task.due_date else "")
+        due_date_entry.grid(row=3, column=1, padx=5, pady=10, sticky="w")
+
+        # دسته‌بندی
+        ttk.Label(main_frame, text="دسته‌بندی:").grid(row=4, column=0, padx=5, pady=10, sticky="w")
+        category_combo = ttk.Combobox(main_frame, width=18, state="normal")
+        category_combo['values'] = self.todo_list.get_all_categories()
+        category_combo.set(task.category if task.category else "بدون دسته")
+        category_combo.grid(row=4, column=1, padx=5, pady=10, sticky="w")
+
+        # وضعیت (انجام شده / انجام نشده)
+        status_var = tk.BooleanVar(value=task.is_completed())
+        status_check = ttk.Checkbutton(main_frame, text="انجام شده", variable=status_var)
+        status_check.grid(row=5, column=1, padx=5, pady=10, sticky="w")
+
+        # دکمه‌های ذخیره و انصراف
+        button_frame = ttk.Frame(main_frame)
+        button_frame.grid(row=6, column=0, columnspan=3, pady=20, sticky="e")
+
+        def save_changes():
+            new_name = name_entry.get().strip()
+            if not new_name:
+                messagebox.showwarning("ورودی نامعتبر", "نام کار نمی‌تواند خالی باشد.", parent=dialog)
+                return
+
+            # اعتبارسنجی تاریخ
+            new_due_date = due_date_entry.get().strip()
+            if new_due_date:
+                try:
+                    from datetime import datetime
+                    datetime.fromisoformat(new_due_date)
+                except ValueError:
+                    messagebox.showwarning("تاریخ نامعتبر", "لطفاً تاریخ را به فرمت YYYY-MM-DD وارد کنید.", parent=dialog)
+                    return
+            else:
+                new_due_date = None
+
+            new_category = category_combo.get().strip()
+            if not new_category:
+                new_category = "بدون دسته"
+
+            # تعیین وضعیت و تاریخ انجام
+            new_status = "انجام شده" if status_var.get() else "انجام نشده"
+            new_completion_date = task.completion_date
+
+            if new_status == "انجام شده" and not task.is_completed():
+                # کار تازه انجام شده
+                from datetime import datetime
+                new_completion_date = datetime.now().isoformat()
+            elif new_status == "انجام نشده" and task.is_completed():
+                # کار به حالت انجام نشده برگشته
+                new_completion_date = None
+
+            # ایجاد کار به‌روز شده
+            updated_task = Task(
+                name=new_name,
+                description=desc_entry.get(),
+                priority=priority_var.get(),
+                status=new_status,
+                completion_date=new_completion_date,
+                due_date=new_due_date,
+                category=new_category,
+                task_id=task.task_id,
+                is_recurring=task.is_recurring,
+                recurrence_pattern=task.recurrence_pattern,
+                notes=task.notes
+            )
+
+            # به‌روزرسانی کار
+            self.todo_list.update_task(task_index, updated_task)
+            self.refresh_task_list()
+            self.input_frame.update_categories()
+            dialog.destroy()
+
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(button_frame, text="ذخیره تغییرات", command=save_changes).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="انصراف", command=cancel).pack(side=tk.RIGHT, padx=5)
+
+        main_frame.columnconfigure(1, weight=1)
+
+        # اعمال تم
+        self.theme_manager.apply_theme()
+
     def show_congrats_popup(self):
         popup = tk.Toplevel(self)
         popup.title("تبریک!")
