@@ -394,10 +394,15 @@ class ToDoList:
         return tasks_cleaned
 
     def add_task(self, task):
+        """یک کار جدید اضافه می‌کند."""
         self.tasks.append(task)
+        # افزودن دسته‌بندی به لیست اگر وجود ندارد
+        if task.category:
+            self.add_category(task.category)
         self._save_tasks()
 
     def delete_multiple_tasks(self, indices):
+        """چندین کار را با هم حذف می‌کند."""
         for index in sorted(indices, reverse=True):
             if 0 <= index < len(self.tasks):
                 del self.tasks[index]
@@ -409,12 +414,81 @@ class ToDoList:
             task = self.tasks[task_index]
             if task.status == "انجام نشده":
                 task.status = "انجام شده"
-                # زمان فعلی را به صورت رشته استاندارد ذخیره کن
                 task.completion_date = datetime.now().isoformat()
+                # اگر کار تکرارشونده است، یک نمونه جدید ایجاد کن
+                if task.is_recurring:
+                    self._create_recurring_instance(task)
             else:
                 task.status = "انجام نشده"
-                task.completion_date = None  # تاریخ را پاک کن
+                task.completion_date = None
             self._save_tasks()
+
+    def _create_recurring_instance(self, completed_task):
+        """یک نمونه جدید از کار تکرارشونده ایجاد می‌کند."""
+        if not completed_task.is_recurring or not completed_task.recurrence_pattern:
+            return
+
+        pattern = completed_task.recurrence_pattern
+        next_due_date = self._calculate_next_due_date(completed_task.due_date, pattern)
+
+        # بررسی end_date
+        if pattern.get("end_date"):
+            try:
+                end_date = datetime.fromisoformat(pattern["end_date"]).date()
+                if next_due_date and datetime.fromisoformat(next_due_date).date() > end_date:
+                    return  # تکرار به پایان رسیده
+            except (ValueError, TypeError):
+                pass
+
+        # ایجاد کار جدید
+        new_task = Task(
+            name=completed_task.name,
+            description=completed_task.description,
+            priority=completed_task.priority,
+            status="انجام نشده",
+            completion_date=None,
+            due_date=next_due_date,
+            category=completed_task.category,
+            is_recurring=True,
+            recurrence_pattern=completed_task.recurrence_pattern,
+            notes=completed_task.notes
+        )
+        self.tasks.append(new_task)
+
+    def _calculate_next_due_date(self, current_due_date, pattern):
+        """تاریخ سررسید بعدی را بر اساس الگوی تکرار محاسبه می‌کند."""
+        if not current_due_date:
+            return None
+
+        try:
+            current_date = datetime.fromisoformat(current_due_date).date()
+            pattern_type = pattern.get("type", "daily")
+            interval = pattern.get("interval", 1)
+
+            if pattern_type == "daily":
+                next_date = current_date + timedelta(days=interval)
+            elif pattern_type == "weekly":
+                next_date = current_date + timedelta(weeks=interval)
+            elif pattern_type == "monthly":
+                # محاسبه ماه بعدی
+                month = current_date.month + interval
+                year = current_date.year
+                while month > 12:
+                    month -= 12
+                    year += 1
+                try:
+                    next_date = current_date.replace(year=year, month=month)
+                except ValueError:
+                    # اگر روز معتبر نیست (مثلاً 31 فوریه)، از آخرین روز ماه استفاده کن
+                    import calendar
+                    last_day = calendar.monthrange(year, month)[1]
+                    next_date = current_date.replace(year=year, month=month, day=last_day)
+            else:
+                return None
+
+            return next_date.isoformat()
+        except (ValueError, TypeError):
+            return None
 
     def import_from_csv(self, filepath):
         try:
